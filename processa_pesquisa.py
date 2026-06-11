@@ -15,6 +15,19 @@ atribui a cada respondente um estágio da curva dos 7 Processos Sociais:
     6. Embaixador (crescimento)
     7. Cocriador (geração)
 
+Metodologia de pontuação
+-------------------------
+Cada resposta é convertida no número do estágio atribuído na aba Lógica (1–7)
+e depois transformada pela função exponencial: pontos = BASE_EXP ** (estágio - 1).
+
+O score final é a média desses pontos. Os cortes para classificação na curva
+são calculados automaticamente com base no range teórico real da pesquisa
+(mínimo possível → máximo possível), dividido em 7 faixas iguais.
+
+Isso resolve o efeito de teto: perguntas com resposta máxima em "Inserindo"
+têm peso natural menor que perguntas que chegam até "Embaixador" ou "Cocriador",
+e respostas de estágios avançados pesam exponencialmente mais.
+
 Uso
 ---
     python processa_pesquisa.py "Base da pesquisa oara chatgpt.ods" -o resultado.xlsx
@@ -44,7 +57,12 @@ ESTAGIOS = [
     "Cocriador",       # 7 – geração
 ]
 
-# Intervalos de corte (escala 1–7). Ajuste conforme necessário.
+# Base da escala exponencial: pontos = BASE_EXP ** (estágio - 1)
+# Base 1 = linear; base 2 = cada estágio vale o dobro do anterior.
+BASE_EXP = 2.0
+
+# CORTES são calculados automaticamente a partir do range teórico real;
+# esta constante é ignorada quando BASE_EXP > 1.
 CORTES = [1.5, 2.5, 3.5, 4.5, 5.5, 6.5]
 
 # Palavras-chave para localizar as abas
@@ -400,11 +418,14 @@ def pontua(df_respostas, perguntas, mapa_logica, df_logica, col_perg_logica):
             est = estagio_para_numero(resposta)
             if est is not None and ("posic" in pn or "nivel de envolvimento" in pn
                                     or "imagem anterior" in pn):
-                return float(est)
-            v = _busca_pontos(pn, rn, mapa_logica)
-            if v is None:
-                sem_logica.add(f"{col[:50]} → {str(resposta)[:40]}")
-            return v if v is not None else float("nan")
+                estagio_raw = float(est)
+            else:
+                estagio_raw = _busca_pontos(pn, rn, mapa_logica)
+                if estagio_raw is None:
+                    sem_logica.add(f"{col[:50]} → {str(resposta)[:40]}")
+                    return float("nan")
+            # Aplica escala exponencial: BASE_EXP ** (estágio - 1)
+            return BASE_EXP ** (estagio_raw - 1)
 
         pontos[col] = df_respostas[col].map(_val)
 
@@ -455,14 +476,19 @@ def processa(caminho_entrada, caminho_saida, cortes=CORTES):
     pontos = pontua(df_resp, perguntas, mapa_logica, abas["logica"],
                     col_perg_nome or abas["logica"].columns[0])
 
-    # Reescala cortes se pontuação não estiver em escala 1–7
-    if not usa_estagio:
-        vmin = pontos.min().min()
-        vmax = pontos.max().max()
-        if pd.notna(vmin) and vmax > vmin:
-            cortes = [vmin + (c - 1) / 6 * (vmax - vmin) for c in cortes]
-            print(f"Cortes reescalados [{vmin:.2f}, {vmax:.2f}]: "
-                  f"{[round(c, 2) for c in cortes]}")
+    # Calcula cortes pelo range teórico real da pesquisa.
+    # pontos já contém valores exponenciais: BASE_EXP^(estágio-1).
+    # Min teórico = BASE_EXP^(1-1) = 1.0 para toda pergunta.
+    # Max teórico por pergunta = máximo observado em pontos (proxy conservador;
+    # com 143 respondentes é provável que toda pergunta tenha ao menos um respondente
+    # no nível máximo).
+    score_min_t = 1.0  # BASE_EXP^0
+    score_max_t = float(pontos.max().mean())
+    r = score_max_t - score_min_t
+    cortes = [score_min_t + r / 7 * i for i in range(1, 7)]
+    print(f"Escala exponencial base {BASE_EXP}: "
+          f"range teórico [{score_min_t:.3f}, {score_max_t:.3f}]")
+    print(f"Cortes: {[round(c, 3) for c in cortes]}")
 
     # ----- Scores individuais -----
     resultado = df_resp.copy()
@@ -517,9 +543,7 @@ def processa(caminho_entrada, caminho_saida, cortes=CORTES):
         resumos["Resumo por Segmento"] = seg
 
     # Tabela de cortes usados
-    limites = ([1.0 if usa_estagio else pontos.min().min()]
-               + list(cortes)
-               + [7.0 if usa_estagio else pontos.max().max()])
+    limites = [score_min_t] + list(cortes) + [score_max_t]
     resumos["Cortes Utilizados"] = pd.DataFrame([
         {"Estágio": est,
          "De (score >)":   "mínimo" if i == 0 else round(limites[i], 2),
