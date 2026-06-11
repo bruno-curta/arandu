@@ -15,19 +15,6 @@ atribui a cada respondente um estágio da curva dos 7 Processos Sociais:
     6. Embaixador (crescimento)
     7. Cocriador (geração)
 
-Metodologia de pontuação
-------------------------
-Em vez de usar valores arbitrários, a recomendação é ancorar a pontuação
-diretamente na curva: cada opção de resposta recebe (na aba "Lógica") o
-estágio da curva correspondente, e esse estágio é convertido em um número
-de 1 a 7. O score final do respondente é a média desses números — assim o
-score já "vive" na mesma escala da curva e os intervalos de corte ficam
-naturais (ex.: score 4,2 ≈ estágio 4, "Comprometido").
-
-Se a aba "Lógica" tiver uma coluna de estágio, ela é usada como fonte da
-pontuação (1–7). Caso contrário, usa-se a coluna de valor numérico da
-própria aba, e os cortes são calculados proporcionalmente.
-
 Uso
 ---
     python processa_pesquisa.py "Base da pesquisa oara chatgpt.ods" -o resultado.xlsx
@@ -44,51 +31,36 @@ import unicodedata
 import pandas as pd
 
 # ---------------------------------------------------------------------------
-# Configuração — ajuste aqui se os nomes no seu arquivo forem diferentes
+# Configuração
 # ---------------------------------------------------------------------------
 
-# Estágios da curva dos 7 Processos Sociais, em ordem evolutiva.
 ESTAGIOS = [
-    "Novo",            # respiração
-    "Adaptando",       # aquecimento
-    "Inserindo",       # digestão
-    "Comprometido",    # segregação
-    "Ativo no Motivo", # manutenção
-    "Embaixador",      # crescimento
-    "Cocriador",       # geração
+    "Novo",            # 1 – respiração
+    "Adaptando",       # 2 – aquecimento
+    "Inserindo",       # 3 – digestão
+    "Comprometido",    # 4 – segregação
+    "Ativo no Motivo", # 5 – manutenção
+    "Embaixador",      # 6 – crescimento
+    "Cocriador",       # 7 – geração
 ]
 
-# Intervalos de corte do score (escala 1–7) para cada estágio.
-# O score S recebe o estágio i se S <= CORTES[i]. O padrão arredonda para o
-# estágio mais próximo; ajuste livremente (ex.: exigir mais para "Cocriador").
-CORTES = [1.5, 2.5, 3.5, 4.5, 5.5, 6.5]  # acima do último corte => Cocriador
+# Intervalos de corte (escala 1–7). Ajuste conforme necessário.
+CORTES = [1.5, 2.5, 3.5, 4.5, 5.5, 6.5]
 
-# Palavras-chave para localizar as abas (a busca ignora acentos/maiúsculas).
+# Palavras-chave para localizar as abas
 ABAS = {
-    "respostas": ["resposta formulario", "respostas"],
+    "respostas": ["resposta", "formulario", "formulário"],
     "perguntas": ["pergunta"],
-    "opcoes":    ["opcoes de reposta", "opcoes de resposta", "opcao"],
-    "logica":    ["logica"],
+    "logica":    ["logica", "lógica"],
 }
 
-# Palavras-chave para localizar colunas na aba "Lógica".
-COLUNAS_LOGICA = {
-    "pergunta": ["pergunta", "questao", "afirmacao", "afirmativa"],
-    "opcao":    ["opcao", "resposta", "categoria"],
-    "valor":    ["valor", "pontuacao", "pontos", "peso", "nota"],
-    "estagio":  ["estagio", "processo", "curva", "posicao"],
-    "nivel":    ["nivel", "qualificacao"],
-}
-
-# Palavras-chave para localizar colunas na aba "Perguntas".
-COLUNAS_PERGUNTAS = {
-    "pergunta": ["pergunta", "questao", "afirmacao", "afirmativa"],
-    "pilar":    ["pilar", "dimensao", "trimembracao", "eixo", "tema"],
-}
-
-# Palavras-chave para identificar a coluna de segmento (família/colaborador)
-# na aba de respostas.
-SEGMENTO_KEYWORDS = ["famil", "colabor"]
+# Padrões para auto-detectar o pilar da trimembração a partir do nome da coluna
+PILARES_PATTERN = [
+    (re.compile(r"pertencimento cultural", re.I),     "Pertencimento Cultural"),
+    (re.compile(r"clareza dos acordos|acordo", re.I), "Acordos Sociais"),
+    (re.compile(r"economia fraterna|fraterna", re.I), "Economia Fraterna"),
+    (re.compile(r"participa[çc]", re.I),              "Engajamento e Participação"),
+]
 
 
 # ---------------------------------------------------------------------------
@@ -96,7 +68,7 @@ SEGMENTO_KEYWORDS = ["famil", "colabor"]
 # ---------------------------------------------------------------------------
 
 def normaliza(texto):
-    """Remove acentos, pontuação e espaços repetidos; deixa em minúsculas."""
+    """Remove acentos, pontuação e espaços extras; retorna em minúsculas."""
     if texto is None or (isinstance(texto, float) and pd.isna(texto)):
         return ""
     texto = str(texto)
@@ -106,62 +78,45 @@ def normaliza(texto):
     return re.sub(r"\s+", " ", texto).strip()
 
 
-def acha_aba(nomes_abas, chaves):
-    """Encontra a aba cujo nome contém alguma das palavras-chave."""
-    for chave in chaves:
-        chave_norm = normaliza(chave)
-        for nome in nomes_abas:
-            if chave_norm in normaliza(nome) or normaliza(nome) in chave_norm:
-                return nome
-    # fallback: interseção de palavras
-    for chave in chaves:
-        palavras = set(normaliza(chave).split())
-        for nome in nomes_abas:
-            if palavras & set(normaliza(nome).split()):
-                return nome
-    return None
+def extrai_colchetes(texto):
+    """Retorna o conteúdo do PRIMEIRO par de colchetes, ou None."""
+    m = re.search(r"\[(.+?)\]", str(texto))
+    return m.group(1).strip() if m else None
 
 
-def acha_coluna(df, chaves, obrigatoria=False, nome=""):
-    """Encontra a coluna do DataFrame cujo nome contém alguma palavra-chave."""
-    for chave in chaves:
-        for col in df.columns:
-            if normaliza(chave) in normaliza(col):
-                return col
-    if obrigatoria:
-        sys.exit(
-            f"ERRO: não encontrei a coluna '{nome}' (procurei por {chaves}). "
-            f"Colunas disponíveis: {list(df.columns)}"
-        )
+def acha_aba(nomes, chaves):
+    """Encontra a aba cujo nome normalizado contém alguma das palavras-chave."""
+    for nome in nomes:
+        for chave in chaves:
+            if normaliza(chave) in normaliza(nome):
+                return nome
     return None
 
 
 def estagio_para_numero(texto):
-    """Converte o nome de um estágio da curva no número 1–7 (ou None)."""
-    t = normaliza(texto)
-    if not t:
+    """Converte nome/número do estágio para 1–7, ou None."""
+    if texto is None or (isinstance(texto, float) and pd.isna(texto)):
         return None
-    # aceita "4", "4 - Comprometido", "Comprometido (segregação)" etc.
-    m = re.match(r"^(\d+)", t)
+    t = normaliza(str(texto))
+    m = re.match(r"^(\d)", t)
     if m and 1 <= int(m.group(1)) <= 7:
         return int(m.group(1))
-    sinonimos = {
+    tabela = {
         "novo": 1, "respiracao": 1,
         "adaptando": 2, "aquecimento": 2,
         "inserindo": 3, "digestao": 3,
         "comprometido": 4, "segregacao": 4,
-        "ativo no motivo": 5, "manutencao": 5, "ativo": 5,
+        "ativo no motivo": 5, "manutencao": 5,
         "embaixador": 6, "crescimento": 6,
         "cocriador": 7, "geracao": 7, "co criador": 7,
     }
-    for chave, num in sinonimos.items():
+    for chave, num in tabela.items():
         if chave in t:
             return num
     return None
 
 
 def numero_para_estagio(score, cortes=CORTES):
-    """Aplica os intervalos de corte e devolve o nome do estágio."""
     if pd.isna(score):
         return None
     for i, corte in enumerate(cortes):
@@ -170,12 +125,18 @@ def numero_para_estagio(score, cortes=CORTES):
     return ESTAGIOS[-1]
 
 
+def detecta_pilar(nome_coluna):
+    for padrao, pilar in PILARES_PATTERN:
+        if padrao.search(nome_coluna):
+            return pilar
+    return None
+
+
 # ---------------------------------------------------------------------------
-# Pipeline
+# Carregamento
 # ---------------------------------------------------------------------------
 
 def carrega_abas(caminho):
-    """Lê todas as abas do arquivo e identifica cada uma pelo nome."""
     engine = "odf" if caminho.lower().endswith(".ods") else None
     todas = pd.read_excel(caminho, sheet_name=None, engine=engine)
     nomes = list(todas.keys())
@@ -185,39 +146,55 @@ def carrega_abas(caminho):
     for papel, chaves in ABAS.items():
         nome = acha_aba(nomes, chaves)
         if nome is None and papel in ("respostas", "logica"):
-            sys.exit(f"ERRO: não encontrei a aba de '{papel}' (procurei por {chaves}).")
+            sys.exit(f"ERRO: não encontrei a aba '{papel}'.\n"
+                     f"Procurei por: {chaves}\nAbas disponíveis: {nomes}")
         if nome is not None:
             abas[papel] = todas[nome].dropna(how="all").dropna(how="all", axis=1)
-            print(f"  -> aba de {papel}: '{nome}' ({len(abas[papel])} linhas)")
+            print(f"  -> aba '{papel}': '{nome}' "
+                  f"({len(abas[papel])} linhas, {len(abas[papel].columns)} colunas)")
     return abas
 
 
+# ---------------------------------------------------------------------------
+# Lógica de pontuação
+# ---------------------------------------------------------------------------
+
 def monta_logica(df_logica):
     """
-    Constrói o dicionário de pontuação a partir da aba "Lógica".
-
-    Retorna (mapa, usa_estagio):
-      - mapa: {(pergunta_norm, opcao_norm): pontuacao} e também
-              {("", opcao_norm): pontuacao} como fallback global.
-      - usa_estagio: True se a pontuação veio da coluna de estágio (escala 1–7).
+    Constrói o mapa de pontuação a partir da aba Lógica.
+    Retorna (mapa, usa_estagio, col_pergunta_nome).
+    mapa[(perg_norm, opcao_norm)] = pontos
+    mapa[("", opcao_norm)] = pontos  (fallback global)
     """
-    col_pergunta = acha_coluna(df_logica, COLUNAS_LOGICA["pergunta"])
-    col_opcao = acha_coluna(df_logica, COLUNAS_LOGICA["opcao"], obrigatoria=True,
-                            nome="opção de resposta (aba Lógica)")
-    col_valor = acha_coluna(df_logica, COLUNAS_LOGICA["valor"])
-    col_estagio = acha_coluna(df_logica, COLUNAS_LOGICA["estagio"])
+    def acha_col(palavras):
+        for col in df_logica.columns:
+            cn = normaliza(col)
+            if any(normaliza(k) in cn for k in palavras):
+                return col
+        return None
+
+    col_pergunta = acha_col(["pergunta", "questao", "afirmacao"])
+    col_opcao    = acha_col(["opcao", "resposta", "categoria"])
+    col_valor    = acha_col(["valor", "pontuacao", "pontos", "peso", "proposta"])
+    col_estagio  = acha_col(["estagio", "processo", "curva", "logica"])
+
+    if col_opcao is None:
+        sys.exit(f"ERRO: coluna de opção não encontrada na aba Lógica.\n"
+                 f"Colunas disponíveis: {list(df_logica.columns)}")
 
     usa_estagio = False
     if col_estagio is not None:
-        estagios_num = df_logica[col_estagio].map(estagio_para_numero)
-        if estagios_num.notna().mean() > 0.5:  # a coluna é mesmo de estágios
+        nums = df_logica[col_estagio].map(estagio_para_numero)
+        if nums.notna().mean() > 0.4:
             usa_estagio = True
-            df_logica = df_logica.assign(_pontos=estagios_num)
-            print(f"Pontuação ancorada na coluna de estágio '{col_estagio}' (escala 1–7).")
+            df_logica = df_logica.assign(_pontos=nums)
+            print(f"Pontuação baseada na coluna de estágio '{col_estagio}' (escala 1–7).")
+
     if not usa_estagio:
         if col_valor is None:
-            sys.exit("ERRO: a aba Lógica não tem coluna de estágio nem de valor utilizável.")
-        df_logica = df_logica.assign(_pontos=pd.to_numeric(df_logica[col_valor], errors="coerce"))
+            sys.exit("ERRO: aba Lógica sem coluna de estágio nem de valor numérico.")
+        df_logica = df_logica.assign(
+            _pontos=pd.to_numeric(df_logica[col_valor], errors="coerce"))
         print(f"Pontuação baseada na coluna de valor '{col_valor}'.")
 
     mapa = {}
@@ -228,157 +205,301 @@ def monta_logica(df_logica):
         opcao = normaliza(linha[col_opcao])
         if not opcao:
             continue
-        if col_pergunta is not None:
-            mapa[(normaliza(linha[col_pergunta]), opcao)] = float(pontos)
-        # fallback global (vale para qualquer pergunta com essa opção)
+        perg_norm = normaliza(linha[col_pergunta]) if col_pergunta else ""
+        mapa[(perg_norm, opcao)] = float(pontos)
         mapa.setdefault(("", opcao), float(pontos))
 
-    print(f"Lógica carregada: {len(mapa)} combinações pergunta/opção pontuadas.")
-    return mapa, usa_estagio
+    print(f"Lógica carregada: {len(mapa)} entradas (pergunta + opção).")
+    return mapa, usa_estagio, col_pergunta
+
+
+# ---------------------------------------------------------------------------
+# Casamento lógica → colunas de resposta
+# ---------------------------------------------------------------------------
+
+def _casa_col_para_lp(resp_col, lp, lp_chave_col):
+    """
+    Tenta casar uma coluna de resposta com um texto de lógica (lp).
+
+    Estratégia (em ordem de preferência):
+    1. Texto exato (normalizado).
+    2. Colchetes: extrai o texto entre [ ] de ambos os lados e compara.
+    3. Texto completo: lp_n sem colchetes == col_n sem colchetes (para questões
+       sem colchetes na lógica, e.g. "1. Em que ano...").
+
+    NÃO usa casamento por prefixo, que causaria falsos positivos entre questões
+    com o mesmo prefixo ("Marque o nível de concordância...").
+    """
+    col_n = normaliza(resp_col)
+    lp_n  = normaliza(lp)
+
+    # 1. Texto exato
+    if col_n == lp_n:
+        return True
+
+    # 2. Colchetes
+    col_chave = extrai_colchetes(resp_col)
+    if col_chave and lp_chave_col:
+        if normaliza(col_chave) == normaliza(lp_chave_col):
+            return True
+        # Usa os primeiros 40 chars do texto entre colchetes como chave única —
+        # tolera variações ortográficas tardias (ex: "busca" vs "busco")
+        cn = normaliza(col_chave)
+        ln = normaliza(lp_chave_col)
+        if len(cn) >= 40 and len(ln) >= 40 and cn[:40] == ln[:40]:
+            return True
+
+    # 3. Questões SEM colchetes (ex: "1. Em que ano entrou"): prefixo longo único
+    if lp_chave_col is None and col_chave is None:
+        # Só usa prefixo quando o texto começa com um número de questão (único)
+        num_m = re.match(r"^\d+[\.\s]", lp_n)
+        if num_m and lp_n[:40] == col_n[:40]:
+            return True
+
+    return False
 
 
 def seleciona_perguntas(abas, df_respostas):
     """
-    Usa a aba "Perguntas" para filtrar as colunas relevantes das respostas e,
-    se houver, associar cada pergunta a um pilar da trimembração.
-    Retorna (lista de colunas relevantes, {coluna: pilar}).
+    Para cada pergunta listada na aba Lógica, encontra a coluna correspondente
+    nas respostas. Retorna (lista_colunas, {coluna: pilar}).
     """
-    colunas_resp = [c for c in df_respostas.columns]
-    if "perguntas" not in abas:
-        print("Aviso: aba 'Perguntas' não encontrada — usando todas as colunas de resposta.")
-        return colunas_resp, {}
+    df_logica = abas["logica"]
 
-    df_perg = abas["perguntas"]
-    col_texto = acha_coluna(df_perg, COLUNAS_PERGUNTAS["pergunta"])
-    if col_texto is None:
-        col_texto = df_perg.columns[0]
-    col_pilar = acha_coluna(df_perg, COLUNAS_PERGUNTAS["pilar"])
+    # Coluna de pergunta na lógica
+    col_perg_logica = None
+    for col in df_logica.columns:
+        if normaliza("pergunta") in normaliza(col):
+            col_perg_logica = col
+            break
+    col_perg_logica = col_perg_logica or df_logica.columns[0]
 
-    relevantes, pilares = [], {}
-    nao_encontradas = []
-    for _, linha in df_perg.iterrows():
-        alvo = normaliza(linha[col_texto])
-        if not alvo:
-            continue
+    logica_pergs = df_logica[col_perg_logica].dropna().unique().tolist()
+
+    # Filtro opcional da aba "Perguntas" (lista de questões a incluir)
+    filtro_lps = None
+    if "perguntas" in abas:
+        df_p = abas["perguntas"].dropna(how="all")
+        lista = df_p.iloc[:, 0].dropna().astype(str).tolist()
+        if len(lista) > 2:
+            filtro_lps = set(normaliza(p) for p in lista)
+
+    # Pré-computa chave de colchetes para cada lp
+    lp_chaves = {lp: extrai_colchetes(lp) for lp in logica_pergs}
+
+    relevantes = []
+    pilares    = {}
+    sem_match  = []
+
+    for lp in logica_pergs:
+        # Aplica filtro da aba "Perguntas" (se existir)
+        if filtro_lps is not None:
+            lp_n = normaliza(lp)
+            if lp_n not in filtro_lps:
+                lp_chave = lp_chaves[lp]
+                # Tenta via chave de colchetes
+                if lp_chave is None or not any(
+                        normaliza(lp_chave) in f for f in filtro_lps):
+                    continue
+
+        lp_chave = lp_chaves[lp]
         achou = None
-        for col in colunas_resp:
-            cn = normaliza(col)
-            if alvo == cn or alvo in cn or cn in alvo:
-                achou = col
-                break
-        if achou is None:
-            nao_encontradas.append(str(linha[col_texto])[:60])
-            continue
-        if achou not in relevantes:
-            relevantes.append(achou)
-        if col_pilar is not None and pd.notna(linha[col_pilar]):
-            pilares[achou] = str(linha[col_pilar]).strip()
+        pilar = None
 
-    if nao_encontradas:
-        print(f"Aviso: {len(nao_encontradas)} pergunta(s) da aba 'Perguntas' não "
-              f"localizadas nas respostas: {nao_encontradas}")
-    print(f"{len(relevantes)} perguntas relevantes selecionadas"
-          + (f", com pilares: {sorted(set(pilares.values()))}" if pilares else "."))
+        for col in df_respostas.columns:
+            if _casa_col_para_lp(col, lp, lp_chave):
+                achou = col
+                pilar = detecta_pilar(col)
+                break
+
+        if achou is None:
+            sem_match.append(lp[:80])
+        elif achou not in relevantes:
+            relevantes.append(achou)
+            if pilar:
+                pilares[achou] = pilar
+
+    # Para colunas sem pilar detectado pelo nome, tenta pelo padrão
+    for col in relevantes:
+        if col not in pilares:
+            p = detecta_pilar(col)
+            if p:
+                pilares[col] = p
+
+    if sem_match:
+        print(f"Aviso: {len(sem_match)} pergunta(s) da Lógica não localizadas "
+              f"nas respostas (ignoradas):")
+        for s in sem_match[:5]:
+            print(f"   - {s}")
+        if len(sem_match) > 5:
+            print(f"   ... e mais {len(sem_match)-5}")
+
+    nomes_pilares = sorted(set(pilares.values()))
+    print(f"{len(relevantes)} perguntas mapeadas. "
+          f"Pilares: {nomes_pilares if nomes_pilares else '(nenhum)'}")
     return relevantes, pilares
 
 
-def detecta_segmento(df_respostas, colunas_pontuadas):
-    """Procura a coluna que identifica o segmento (família/colaborador)."""
-    for col in df_respostas.columns:
-        if col in colunas_pontuadas:
-            continue
-        valores = " ".join(normaliza(v) for v in df_respostas[col].dropna().unique()[:50])
-        if all(kw in valores for kw in SEGMENTO_KEYWORDS):
-            return col
-    for col in df_respostas.columns:
-        if any(k in normaliza(col) for k in ["vinculo", "segmento", "perfil", "voce e", "relacao com a escola"]):
-            return col
+# ---------------------------------------------------------------------------
+# Pontuação
+# ---------------------------------------------------------------------------
+
+def _busca_pontos(perg_norm, opcao_norm, mapa):
+    """Busca a pontuação no mapa com fallback e correspondência parcial."""
+    for chave in [(perg_norm, opcao_norm), ("", opcao_norm)]:
+        if chave in mapa:
+            return mapa[chave]
+    # correspondência parcial da opção
+    for (p, o), v in mapa.items():
+        if (p == perg_norm or p == "") and (o in opcao_norm or opcao_norm in o):
+            return v
+    # drop palavras curtas (artigos/preposições) e tenta novamente
+    # ex: "Antes de 2015" vs "Antes 2015"
+    def _sem_curtas(t):
+        return re.sub(r"\s+", " ", re.sub(r"\b\w{1,2}\b", " ", t)).strip()
+    opcao_curta = _sem_curtas(opcao_norm)
+    if opcao_curta and opcao_curta != opcao_norm:
+        for (p, o), v in mapa.items():
+            o_curta = _sem_curtas(o)
+            if (p == perg_norm or p == "") and o_curta and o_curta == opcao_curta:
+                return v
     return None
 
 
-def pontua(df_respostas, perguntas, mapa_logica):
+def pontua(df_respostas, perguntas, mapa_logica, df_logica, col_perg_logica):
     """Converte cada resposta em pontos. Retorna DataFrame de pontos."""
+    # Mapa: chave_colchetes_da_col_resp (norm) → perg_norm_na_logica
+    chave_para_perg_norm = {}
+    for lp in df_logica[col_perg_logica].dropna().unique():
+        lp_n = normaliza(lp)
+        chave_para_perg_norm[lp_n] = lp_n  # match direto
+        c = extrai_colchetes(lp)
+        if c:
+            chave_para_perg_norm[normaliza(c)] = lp_n
+
     pontos = pd.DataFrame(index=df_respostas.index)
     sem_logica = set()
-    for col in perguntas:
-        cn = normaliza(col)
 
-        def valor(resposta, cn=cn):
-            rn = normaliza(resposta)
+    for col in perguntas:
+        col_n = normaliza(col)
+        # Determina a chave de pergunta para buscar no mapa_logica
+        perg_norm = col_n
+        c = extrai_colchetes(col)
+        if c and normaliza(c) in chave_para_perg_norm:
+            perg_norm = chave_para_perg_norm[normaliza(c)]
+        elif col_n in chave_para_perg_norm:
+            perg_norm = chave_para_perg_norm[col_n]
+
+        def _val(resposta, pn=perg_norm):
+            if pd.isna(resposta):
+                return float("nan")
+            rn = normaliza(str(resposta))
             if not rn:
                 return float("nan")
-            # tenta casar (pergunta, opção); depois só a opção; depois por inclusão
-            for chave in [(cn, rn), ("", rn)]:
-                if chave in mapa_logica:
-                    return mapa_logica[chave]
-            for (p, o), v in mapa_logica.items():
-                if (p == cn or p == "") and (o in rn or rn in o):
-                    return v
-            sem_logica.add(f"{col[:40]}... => {str(resposta)[:40]}")
-            return float("nan")
+            # Caso especial: resposta direta do estágio (questão de autoposicionamento)
+            est = estagio_para_numero(resposta)
+            if est is not None and ("posic" in pn or "nivel de envolvimento" in pn
+                                    or "imagem anterior" in pn):
+                return float(est)
+            v = _busca_pontos(pn, rn, mapa_logica)
+            if v is None:
+                sem_logica.add(f"{col[:50]} → {str(resposta)[:40]}")
+            return v if v is not None else float("nan")
 
-        pontos[col] = df_respostas[col].map(valor)
+        pontos[col] = df_respostas[col].map(_val)
 
     if sem_logica:
-        print(f"Aviso: {len(sem_logica)} resposta(s) sem correspondência na Lógica "
-              "(ficaram em branco). Exemplos:")
-        for ex in sorted(sem_logica)[:10]:
+        amostras = sorted(sem_logica)[:8]
+        print(f"\nAviso: {len(sem_logica)} tipo(s) de resposta sem correspondência na "
+              f"Lógica (ficaram como NaN). Amostras:")
+        for ex in amostras:
             print(f"   - {ex}")
     return pontos
+
+
+# ---------------------------------------------------------------------------
+# Pipeline principal
+# ---------------------------------------------------------------------------
+
+def detecta_segmento(df_respostas, colunas_pontuadas):
+    """Localiza a coluna que indica o segmento (família / colaborador)."""
+    for col in df_respostas.columns:
+        if col in colunas_pontuadas:
+            continue
+        cn = normaliza(col)
+        if any(k in cn for k in ["vinculo", "segmento", "perfil"]):
+            vals = " ".join(normaliza(str(v))
+                            for v in df_respostas[col].dropna().unique()[:20])
+            if "famil" in vals or "colabo" in vals or "mae" in vals or "pai" in vals:
+                return col
+    for col in df_respostas.columns:
+        if col in colunas_pontuadas:
+            continue
+        vals = " ".join(normaliza(str(v))
+                        for v in df_respostas[col].dropna().unique()[:20])
+        if ("famil" in vals or "mae" in vals or "pai" in vals) and "colabo" in vals:
+            return col
+    return None
 
 
 def processa(caminho_entrada, caminho_saida, cortes=CORTES):
     abas = carrega_abas(caminho_entrada)
     df_resp = abas["respostas"]
-    mapa_logica, usa_estagio = monta_logica(abas["logica"])
+
+    mapa_logica, usa_estagio, col_perg_nome = monta_logica(abas["logica"])
     perguntas, pilares = seleciona_perguntas(abas, df_resp)
 
-    pontos = pontua(df_resp, perguntas, mapa_logica)
+    if not perguntas:
+        sys.exit("ERRO: nenhuma pergunta foi mapeada. Verifique a estrutura do arquivo.")
 
-    # Se a pontuação não veio da escala 1–7, reescala os cortes proporcionalmente.
+    pontos = pontua(df_resp, perguntas, mapa_logica, abas["logica"],
+                    col_perg_nome or abas["logica"].columns[0])
+
+    # Reescala cortes se pontuação não estiver em escala 1–7
     if not usa_estagio:
-        vmin, vmax = pontos.min().min(), pontos.max().max()
+        vmin = pontos.min().min()
+        vmax = pontos.max().max()
         if pd.notna(vmin) and vmax > vmin:
             cortes = [vmin + (c - 1) / 6 * (vmax - vmin) for c in cortes]
-            print(f"Cortes reescalados para a faixa de valores [{vmin:.2f}, {vmax:.2f}]: "
+            print(f"Cortes reescalados [{vmin:.2f}, {vmax:.2f}]: "
                   f"{[round(c, 2) for c in cortes]}")
 
-    # --- Resultado individual ---------------------------------------------
+    # ----- Scores individuais -----
     resultado = df_resp.copy()
     col_segmento = detecta_segmento(df_resp, set(perguntas))
     if col_segmento:
-        print(f"Coluna de segmento detectada: '{col_segmento}'")
+        print(f"Coluna de segmento: '{col_segmento}'")
 
-    # score por pilar da trimembração (se a aba Perguntas trouxe os pilares)
     nomes_pilares = sorted(set(pilares.values()))
     for pilar in nomes_pilares:
         cols = [c for c, p in pilares.items() if p == pilar]
-        resultado[f"Score - {pilar}"] = pontos[cols].mean(axis=1).round(2)
+        resultado[f"Score – {pilar}"] = pontos[cols].mean(axis=1).round(2)
 
-    resultado["Score Final"] = pontos.mean(axis=1).round(2)
-    resultado["Estágio na Curva"] = resultado["Score Final"].map(
+    resultado["Score Final"]          = pontos.mean(axis=1).round(2)
+    resultado["Estágio na Curva"]     = resultado["Score Final"].map(
         lambda s: numero_para_estagio(s, cortes))
-    resultado["Nº de respostas pontuadas"] = pontos.notna().sum(axis=1)
+    resultado["Nº perguntas pontuadas"] = pontos.notna().sum(axis=1)
+    resultado["Total de perguntas"]   = len(perguntas)
 
-    # --- Resumos ------------------------------------------------------------
+    # ----- Resumos -----
     resumo_estagio = (
         resultado["Estágio na Curva"]
         .value_counts()
-        .reindex(ESTAGIOS)
-        .fillna(0).astype(int)
-        .rename("Respondentes")
-        .to_frame()
+        .reindex(ESTAGIOS).fillna(0).astype(int)
+        .rename("Respondentes").to_frame()
     )
     resumo_estagio["%"] = (100 * resumo_estagio["Respondentes"]
                            / max(len(resultado), 1)).round(1)
     resumo_estagio.index.name = "Estágio"
-
     resumos = {"Resumo por Estágio": resumo_estagio.reset_index()}
 
     if nomes_pilares:
         resumo_pilar = pd.DataFrame({
-            "Pilar": nomes_pilares,
-            "Score Médio": [resultado[f"Score - {p}"].mean().round(2) for p in nomes_pilares],
+            "Pilar":           nomes_pilares,
+            "Nº perguntas":    [len([c for c, p in pilares.items() if p == pl])
+                                for pl in nomes_pilares],
+            "Score Médio":     [resultado[f"Score – {pl}"].mean().round(2)
+                                for pl in nomes_pilares],
         })
         resumo_pilar["Estágio Médio"] = resumo_pilar["Score Médio"].map(
             lambda s: numero_para_estagio(s, cortes))
@@ -386,38 +507,44 @@ def processa(caminho_entrada, caminho_saida, cortes=CORTES):
 
     if col_segmento:
         grp = resultado.groupby(col_segmento)
-        resumo_seg = grp["Score Final"].agg(["count", "mean"]).round(2).reset_index()
-        resumo_seg.columns = [col_segmento, "Respondentes", "Score Médio"]
-        resumo_seg["Estágio Médio"] = resumo_seg["Score Médio"].map(
+        seg = grp["Score Final"].agg(["count", "mean"]).round(2).reset_index()
+        seg.columns = ["Segmento", "Respondentes", "Score Médio"]
+        seg["Estágio Médio"] = seg["Score Médio"].map(
             lambda s: numero_para_estagio(s, cortes))
-        resumos["Resumo por Segmento"] = resumo_seg
+        if nomes_pilares:
+            for pl in nomes_pilares:
+                seg[f"Score – {pl}"] = grp[f"Score – {pl}"].mean().round(2).values
+        resumos["Resumo por Segmento"] = seg
 
-    # tabela de referência dos cortes usados
-    faixas = []
-    limites = [pontos.min().min() if not usa_estagio else 1.0] + list(cortes) + \
-              [pontos.max().max() if not usa_estagio else 7.0]
-    for i, est in enumerate(ESTAGIOS):
-        faixas.append({"Estágio": est,
-                       "De (score >)": round(limites[i], 2) if i else "mínimo",
-                       "Até (score <=)": round(limites[i + 1], 2) if i < 6 else "máximo"})
-    resumos["Cortes Utilizados"] = pd.DataFrame(faixas)
+    # Tabela de cortes usados
+    limites = ([1.0 if usa_estagio else pontos.min().min()]
+               + list(cortes)
+               + [7.0 if usa_estagio else pontos.max().max()])
+    resumos["Cortes Utilizados"] = pd.DataFrame([
+        {"Estágio": est,
+         "De (score >)":   "mínimo" if i == 0 else round(limites[i], 2),
+         "Até (score <=)": "máximo" if i == 6 else round(limites[i + 1], 2)}
+        for i, est in enumerate(ESTAGIOS)
+    ])
 
-    # --- Grava o arquivo de saída -------------------------------------------
-    with pd.ExcelWriter(caminho_saida, engine="openpyxl") as escritor:
-        resultado.to_excel(escritor, sheet_name="Scores Individuais", index=False)
-        pontos.to_excel(escritor, sheet_name="Pontos por Pergunta", index=False)
+    # ----- Grava .xlsx -----
+    with pd.ExcelWriter(caminho_saida, engine="openpyxl") as w:
+        resultado.to_excel(w,  sheet_name="Scores Individuais",    index=False)
+        pontos.to_excel(w,     sheet_name="Pontos por Pergunta",   index=False)
         for nome, df in resumos.items():
-            df.to_excel(escritor, sheet_name=nome[:31], index=False)
+            df.to_excel(w, sheet_name=nome[:31], index=False)
 
-    print(f"\nArquivo processado gravado em: {caminho_saida}")
+    print(f"\nArquivo gerado: {caminho_saida}")
     print("\n=== Resumo por Estágio ===")
     print(resumo_estagio.to_string())
     if "Resumo por Pilar" in resumos:
-        print("\n=== Resumo por Pilar ===")
+        print("\n=== Resumo por Pilar (trimembração social) ===")
         print(resumos["Resumo por Pilar"].to_string(index=False))
     if "Resumo por Segmento" in resumos:
         print("\n=== Resumo por Segmento ===")
-        print(resumos["Resumo por Segmento"].to_string(index=False))
+        print(resumos["Resumo por Segmento"]
+              [["Segmento", "Respondentes", "Score Médio", "Estágio Médio"]]
+              .to_string(index=False))
     return resultado
 
 
@@ -426,7 +553,7 @@ def main():
         description="Processa a pesquisa e gera scores na curva dos 7 Processos Sociais.")
     parser.add_argument("entrada", help="Arquivo .ods ou .xlsx da pesquisa")
     parser.add_argument("-o", "--saida", default="pesquisa_processada.xlsx",
-                        help="Arquivo .xlsx de saída (padrão: pesquisa_processada.xlsx)")
+                        help="Arquivo de saída (padrão: pesquisa_processada.xlsx)")
     args = parser.parse_args()
     processa(args.entrada, args.saida)
 
