@@ -6,15 +6,9 @@
 ## 1. Contexto e Metodologia
 
 ### Objetivo
-Compreender o estágio de maturidade da comunidade escolar — famílias e colaboradores — em relação à proposta antroposófica que fundamenta a escola Arandu, com foco nos três pilares da **trimembração social**:
-
-- **Pertencimento Cultural** — alinhamento com o propósito, missão e valores da escola
-- **Acordos Sociais** — clareza e prática dos acordos e relações dentro da comunidade
-- **Economia Fraterna** — compreensão e prática da economia baseada na fraternidade
+Compreender o estágio de maturidade da comunidade escolar — famílias e colaboradores — em relação à proposta antroposófica que fundamenta a escola Arandu, com foco nos três pilares da **trimembração social**.
 
 ### Referencial: Os 7 Processos Sociais
-
-Os resultados são interpretados à luz da curva dos **7 Processos Sociais**, que descreve a trajetória evolutiva de maturidade de um indivíduo em relação a uma comunidade:
 
 | # | Estágio | Processo | Característica |
 |---|---|---|---|
@@ -28,189 +22,181 @@ Os resultados são interpretados à luz da curva dos **7 Processos Sociais**, qu
 
 ### Metodologia de Pontuação
 
-Cada opção de resposta foi associada a um estágio da curva (1 a 7) conforme definido na aba Lógica da pesquisa. A pontuação de cada resposta segue uma **escala exponencial de base 2**:
+Cada resposta é convertida diretamente para o estágio da curva conforme definido na aba **Lógica** da pesquisa (escala linear de 1 a 7). A pontuação é organizada em três **dimensões**:
 
-> **pontos = 2^(estágio − 1)**
+| Dimensão | Peso | Nº perguntas |
+|---|---|---|
+| **Conhecimento** | 20% | 7 |
+| **Atitude** | 35% | 22 |
+| **Prática** | 45% | 7 |
 
-| Estágio | Pontos |
-|---|---|
-| Novo | 1 |
-| Adaptando | 2 |
-| Inserindo | 4 |
-| Comprometido | 8 |
-| Ativo no Motivo | 16 |
-| Embaixador | 32 |
-| Cocriador | 64 |
+O **Score Final** de cada respondente é calculado como:
 
-Essa escala reflete que avançar na curva é progressivamente mais difícil e significativo: uma resposta de Embaixador vale 32× mais que uma de Novo — em vez de apenas 6× em escala linear. Perguntas onde a melhor resposta possível é "Inserindo" (4 pontos) naturalmente contribuem menos para o score do que perguntas que chegam até "Embaixador" (32 pontos), sem nenhuma penalidade artificial.
+> **Score Final = Conhecimento × 0,20 + Atitude × 0,35 + Prática × 0,45**
 
-O **score final** de cada respondente é a média desses pontos. Os estágios de classificação são definidos dividindo o **range teórico real** da pesquisa (mínimo possível = 1, máximo possível = 15) em 7 faixas iguais:
+Se uma dimensão não tiver respostas válidas, os pesos são normalizados pelas dimensões presentes.
+
+### Estágios de classificação (Score Final)
 
 | Estágio | Faixa de score |
 |---|---|
-| Novo | 1,0 a 3,0 |
-| Adaptando | 3,0 a 5,0 |
-| Inserindo | 5,0 a 7,0 |
-| Comprometido | 7,0 a 9,0 |
-| Ativo no Motivo | 9,0 a 11,0 |
-| Embaixador | 11,0 a 13,0 |
-| Cocriador | acima de 13,0 |
+| Novo | 1,00 a 1,49 |
+| Adaptando | 1,50 a 2,49 |
+| Inserindo | 2,50 a 3,49 |
+| Comprometido | 3,50 a 4,49 |
+| Ativo no Motivo | 4,50 a 5,49 |
+| Embaixador | 5,50 a 6,49 |
+| Cocriador | 6,50 a 7,00 |
 
-- **143 respondentes** | **36 perguntas pontuadas** (cobrindo os 4 pilares)
-- Período: maio/junho de 2026
-
----
-
-## 2. Perfil dos Respondentes
-
-### Vínculo com a escola
-| Segmento | N | % |
-|---|---|---|
-| Mãe/Pai de aluno(s) | 128 | 90% |
-| Colaborador com filho(s) na escola | 8 | 6% |
-| Colaborador | 7 | 5% |
-
-### Tempo de escola
-A comunidade é predominantemente recente: **38 respondentes (27%) entraram em 2025**. Os membros mais antigos (antes de 2015) representam 10% da comunidade e apresentam os scores mais altos.
-
-| Ano de entrada | N | Score médio |
-|---|---|---|
-| Antes de 2015 | 15 | 11,50 |
-| 2016–2017 | 8 | 10,55 |
-| 2018–2019 | 10 | 10,09 |
-| 2020–2022 | 43 | 10,77 |
-| 2023–2024 | 29 | 10,52 |
-| 2025 | 38 | 9,52 |
-
-> Tendência clara: **quanto mais tempo na escola, maior o score de maturidade**.
-
-### Formação em Antroposofia
-| | N | % |
-|---|---|---|
-| Sem formação em antroposofia | 93 | 65% |
-| Com alguma formação | 50 | 35% |
-
-A maioria da comunidade (65%) não possui formação formal em antroposofia, o que é natural para uma escola em crescimento. Quem tem formação apresenta score levemente superior.
+- **143 respondentes** | **36 perguntas pontuadas** (7 Conhecimento + 22 Atitude + 7 Prática)
+- Período: setembro de 2025 a 2026
 
 ---
 
-## 3. Resultado Geral: Posição na Curva dos 7 Processos Sociais
+## 2. Resultado Geral: Posição na Curva dos 7 Processos Sociais
 
-### Score médio geral: **10,4 → Estágio Ativo no Motivo**
+### Score médio geral: **2,74 → Estágio Inserindo**
+
+| Dimensão | Score médio | Estágio |
+|---|---|---|
+| **Conhecimento** | 1,87 | Adaptando |
+| **Atitude** | 4,23 | Comprometido |
+| **Prática** | 1,97 | Adaptando |
+| **Score Final** | **2,74** | **Inserindo** |
+
+### Distribuição por Estágio Final
 
 | Estágio | Respondentes | % |
 |---|---|---|
-| Novo | 0 | 0% |
-| Adaptando | 4 | 3% |
-| Inserindo | 13 | 9% |
-| Comprometido | 28 | 20% |
-| **Ativo no Motivo** | **30** | **21%** |
-| **Embaixador** | **44** | **31%** |
-| Cocriador | 24 | 17% |
+| Novo | 10 | 7,0% |
+| **Adaptando** | **68** | **47,6%** |
+| Inserindo | 26 | 18,2% |
+| Comprometido | 39 | 27,3% |
+| Ativo no Motivo | 0 | 0,0% |
+| Embaixador | 0 | 0,0% |
+| Cocriador | 0 | 0,0% |
 
-A comunidade escolar da Arandu está numa posição significativamente madura: **69% dos respondentes estão em Ativo no Motivo ou acima**, o que indica que a maioria já tem um papel ativo de atuação e reconhecimento dentro da escola. Apenas 12% estão nos estágios iniciais (Adaptando/Inserindo), e esses são provavelmente os ingressantes mais recentes.
+A maior parte da comunidade (47,6%) está em **Adaptando**, com um segundo grupo expressivo (27,3%) em **Comprometido**. Nenhum respondente atingiu os estágios de Ativo no Motivo, Embaixador ou Cocriador pelo Score Final.
 
----
+### Estágio Predominante
 
-## 4. Análise por Pilar da Trimembração Social
+O **Estágio Predominante** reflete o estágio mais frequente nas respostas individuais de cada pessoa — um retrato de onde a maioria das respostas individuais se concentra:
 
-| Pilar | Nº perguntas | Score médio | Estágio |
-|---|---|---|---|
-| **Pertencimento Cultural** | 8 | **17,43** | Cocriador |
-| **Acordos Sociais** | 9 | **13,06** | Cocriador |
-| **Economia Fraterna** | 8 | **10,19** | Ativo no Motivo |
-| **Engajamento e Participação** | 5 | **3,40** | Adaptando |
-
-### Pertencimento Cultural — o ponto mais forte (Cocriador)
-A comunidade demonstra **altíssimo alinhamento com o propósito, missão e valores da escola**. As pessoas escolhem estar na Arandu, confiam na escola e acolhem a diversidade da comunidade. Este é o alicerce sólido sobre o qual os demais pilares se constroem.
-
-### Acordos Sociais — maturidade elevada (Cocriador)
-O entendimento e a prática dos acordos sociais também estão em nível muito avançado. A comunidade conhece as regras, cumpre os combinados, cuida das relações e apoia os outros nos momentos de crise. Um resultado expressivo.
-
-### Economia Fraterna — em desenvolvimento (Ativo no Motivo)
-A compreensão da economia fraterna está em nível intermediário-avançado. A comunidade confia no processo e acredita no caminho, mas a **prática cotidiana e consciente** ainda está em construção. É o pilar que mais exige formação e aprofundamento coletivo.
-
-### Engajamento e Participação — o maior desafio (Adaptando)
-Este é o ponto crítico. O nível de participação ativa nas estruturas da escola (grupos de trabalho, APG, mutirões, representações) é baixo — a maioria ainda não ocupa papéis formais de atuação. **Converter o comprometimento cultural e de acordos em atuação estruturada é a principal alavanca de evolução da comunidade.**
-
----
-
-## 5. Análise por Segmento
-
-| Segmento | N | Score geral | Estágio | Pertenc. Cultural | Acordos Sociais | Econ. Fraterna | Engajamento |
-|---|---|---|---|---|---|---|---|
-| Colaborador | 7 | 10,46 | Ativo no Motivo | — | — | — | — |
-| Colaborador c/ filho(s) | 8 | **11,66** | **Embaixador** | — | — | — | — |
-| Mãe/Pai de aluno(s) | 128 | 10,34 | Ativo no Motivo | — | — | — | — |
-
-Os três segmentos estão concentrados entre **Ativo no Motivo e Embaixador**, com scores muito próximos — a comunidade é homogênea em seu estágio de maturidade.
-
-**Destaques:**
-- **Colaboradores com filhos na escola** têm o score mais alto e são o segmento mais maduro — o duplo vínculo (profissional + familiar) cria um engajamento mais profundo e consistente.
-- **Colaboradores sem filhos** têm boa maturidade geral, mas é o grupo que mais pode crescer em participação nas atividades comunitárias além das funções formais.
-- **Famílias** formam 90% da comunidade e estão no mesmo patamar dos colaboradores — o que é um dado positivo: a escola não depende de um grupo minoritário para sustentar sua maturidade coletiva.
-
----
-
-## 6. Autoposicionamento vs. Score Calculado
-
-A pesquisa incluiu uma pergunta em que o próprio respondente se posicionou na curva. Comparando com o score calculado:
-
-| Autoposicionamento | N | Score calculado |
+| Estágio | Respondentes | % |
 |---|---|---|
-| Novo | 20 | 8,54 |
-| Adaptando | 13 | 8,14 |
-| Inserindo | 13 | 8,27 |
-| **Comprometido** | **51** | **11,24** |
-| Ativo no Motivo | 28 | **11,83** |
-| Embaixador | 6 | 11,52 |
-| Cocriador | 10 | 11,00 |
+| **Adaptando** | **88** | **61,5%** |
+| Novo | 43 | 30,1% |
+| Comprometido | 6 | 4,2% |
+| Ativo no Motivo | 4 | 2,8% |
+| Inserindo | 2 | 1,4% |
 
-**Leituras relevantes:**
+A maioria das respostas individuais aponta para Adaptando ou Novo — o que é consistente com as perguntas de Conhecimento e Prática, cujos valores máximos na lógica estão nesses estágios.
 
-1. **Quem se diz Novo/Adaptando/Inserindo pontua em Comprometido** (score ~8): a percepção de si mesmo como iniciante subestima o nível real de alinhamento e participação. Esse grupo provavelmente tem mais maturidade do que se reconhece — o que é uma oportunidade de reconhecimento e convite.
+---
 
-2. **Os que se autoposicionam como Comprometido ou acima têm scores semelhantes entre si** (~11): não há grande diferença calculada entre quem se diz Comprometido, Embaixador ou Cocriador. Isso sugere que as distinções mais finas entre os estágios avançados ainda estão sendo construídas — a comunidade sente que está avançada, mas os comportamentos diferenciadores de Embaixador e Cocriador (representar, gerar, coconstruir) ainda não estão totalmente consolidados.
+## 3. Análise por Dimensão
+
+### Conhecimento — Score médio 1,87 (Adaptando)
+
+As 7 perguntas de Conhecimento incluem questões como "Você já conhecia o propósito da escola?" (Sim→Adaptando / Não→Novo) e "Conhece as regras e acordos da escola?". Por design, o teto da maioria dessas perguntas é o estágio **Adaptando** (2) — saber que algo existe é um passo inicial na curva. O score reflete que a comunidade conhece os pilares fundamentais da escola, mas o conhecimento ainda está em fase de internalização.
+
+### Atitude — Score médio 4,23 (Comprometido)
+
+As 22 perguntas de Atitude (concordância com afirmações sobre Pertencimento Cultural, Acordos Sociais e Economia Fraterna) revelam o ponto mais forte da comunidade. Um score de 4,23 indica que as atitudes e disposições estão em nível de **Comprometido**: as pessoas escolhem a escola, confiam nela, cumprem acordos e apoiam o grupo. Esse é o pilar que sustenta a coesão da comunidade hoje.
+
+### Prática — Score médio 1,97 (Adaptando)
+
+As 7 perguntas de Prática medem participação real em estruturas da escola (grupos de trabalho, APG, mutirões, etc.). O score baixo (1,97) reflete que a maioria ainda não ocupa papéis ativos formais — a participação estruturada está no início. **Converter o comprometimento em atuação concreta é a principal alavanca de evolução.**
+
+---
+
+## 4. Análise por Segmento
+
+| Segmento | N | Score Final | Estágio |
+|---|---|---|---|
+| Colaborador | 7 | 2,65 | Inserindo |
+| Colaborador com filho(s) na escola | 8 | 2,86 | Inserindo |
+| Mãe/Pai de aluno(s) | 128 | 2,74 | Inserindo |
+
+Os três segmentos estão concentrados no estágio **Inserindo**, com scores muito próximos — a comunidade é homogênea. Colaboradores com filhos têm o score levemente mais alto, o que sugere que o duplo vínculo (profissional + familiar) cria engajamento mais profundo.
+
+---
+
+## 5. Análise por Tempo de Vínculo
+
+| Ano de entrada | N | Score Final médio | Estágio |
+|---|---|---|---|
+| 2016 | 3 | 2,91 | Inserindo |
+| 2017 | 5 | 2,94 | Inserindo |
+| 2018 | 4 | 3,03 | Inserindo |
+| 2019 | 6 | 3,02 | Inserindo |
+| 2020 | 12 | 3,09 | Inserindo |
+| 2021 | 14 | 3,20 | Inserindo |
+| 2022 | 17 | 3,08 | Inserindo |
+| 2023 | 12 | 2,76 | Inserindo |
+| 2024 | 17 | 2,72 | Inserindo |
+| **2025** | **38** | **2,11** | **Adaptando** |
+
+> Tendência clara: **quanto mais tempo na escola, maior o score de maturidade**. Os ingressantes de 2025 (27% da comunidade) têm o menor score (2,11 — Adaptando). Os membros mais antigos (2016-2022) estão consistentemente acima de 2,90 — na fronteira entre Inserindo e Comprometido.
+
+---
+
+## 6. Leitura Interpretativa dos Resultados
+
+### Por que o Score Final fica concentrado entre Adaptando e Comprometido?
+
+A estrutura das três dimensões explica o padrão:
+
+- **Conhecimento** (20% do peso): perguntas de Sim/Não cujo teto é Adaptando (2). Puxa o score para baixo.
+- **Prática** (45% do maior peso): participação em estruturas formais — a maioria respondeu "Nunca fui", resultando em score próximo a Novo (1). É o fator que mais limita o Score Final.
+- **Atitude** (35%): o único eixo com scores altos (4,23). Mas mesmo com peso de 35%, não é suficiente para compensar Conhecimento e Prática baixos.
+
+Isso não é um problema do instrumento — é um **diagnóstico preciso**: a comunidade tem disposição e comprometimento (Atitude alta), mas ainda não traduz isso em participação efetiva (Prática baixa) nem em um entendimento profundo e internalizado (Conhecimento ainda inicial).
+
+### O que o instrumento revela de importante
+
+O **gap entre Atitude (4,23) e Prática (1,97)** — mais de 2 pontos de diferença — é a descoberta mais significativa da pesquisa. A comunidade **quer** participar, **acredita** no propósito, **confia** na escola — mas **ainda não age** de forma estruturada. Esse gap é exatamente o que precisa ser trabalhado.
 
 ---
 
 ## 7. Síntese e Recomendações
 
 ### Onde a comunidade está
-A Arandu tem uma comunidade com **forte pertencimento cultural e maturidade nos acordos sociais**, que já avançou para o estágio de Ativo no Motivo como média geral. O principal desafio é transformar esse comprometimento em **participação estruturada e geração coletiva** — o salto para Embaixador e Cocriador de fato.
+A Arandu tem uma comunidade em **Inserindo** — em processo de digestão e absorção dos valores, propósito e formas de funcionamento da escola. O comprometimento existe e é genuíno (Atitude em Comprometido). O desafio é a **transição para a Prática**.
 
 ### O que está funcionando
-- O **propósito e os valores** da escola ressoam com clareza e profundidade — a adesão é genuína e madura.
-- Os **acordos sociais** estão bem estabelecidos: a comunidade cuida das relações, cumpre combinados e apoia uns aos outros.
-- **Tempo e vivência** são os maiores formadores: membros mais antigos têm maturidade consistentemente maior.
+- As **atitudes e disposições** estão sólidas: a comunidade escolhe a escola, confia nela, cuida das relações e cumpre acordos.
+- **Tempo e vivência** continuam sendo os maiores formadores: membros com mais tempo têm scores consistentemente maiores.
+- A **homogeneidade entre segmentos** (famílias e colaboradores no mesmo patamar) indica que a cultura da escola permeia os diferentes vínculos.
 
 ### Principais oportunidades de desenvolvimento
 
-**1. Ativar a participação estruturada (pilar mais crítico)**
-O gap entre o alto Pertencimento Cultural (Cocriador) e o baixo Engajamento (Adaptando) é o maior desafio. Criar **caminhos de entrada acessíveis e graduais** nas estruturas participativas da escola — que não exijam comprometimento imediato de tempo — pode transformar comprometimento latente em atuação real.
+**1. Ativar a participação estruturada (prioridade 1)**
+O gap Atitude-Prática é o principal alvo. Criar **caminhos de entrada acessíveis e graduais** nas estruturas participativas — com convites ativos, papéis concretos e de baixo comprometimento inicial — pode converter o comprometimento latente em atuação real.
 
-**2. Aprofundar a Economia Fraterna**
-É o pilar com mais espaço para crescer. Iniciativas de **educação econômica comunitária** — transparência nos processos de precificação, rodas de conversa sobre fraternidade econômica, exemplos práticos — podem acelerar a maturidade nesse eixo.
+**2. Aprofundar o Conhecimento**
+O score de Conhecimento (1,87) reflete que a maioria sabe que a escola tem propósito, missão e valores, mas ainda está aprendendo o que isso significa na prática. Iniciativas de **formação e aprofundamento** (oficinas, círculos de estudo, onboarding estruturado) aceleram essa dimensão.
 
-**3. Reconhecer quem se subestima**
-Há um grupo significativo (Novo/Adaptando/Inserindo na autopercepção) que já tem score de Comprometido. **Devolver esse espelho para a comunidade** — mostrar que eles já estão mais avançados do que percebem — pode ser um desbloqueio importante de engajamento.
+**3. Programa de integração para ingressantes**
+Os 38 entrados em 2025 (27% da comunidade) têm score 2,11 — Adaptando. Um **onboarding estruturado** que conecte os novos membros ao propósito, às práticas e às pessoas desde o início é estratégico.
 
-**4. Consolidar os comportamentos de Embaixador e Cocriador**
-A fronteira entre os estágios avançados ainda está difusa. Tornar **explícito o que significa ser Embaixador ou Cocriador** na prática da Arandu — quais comportamentos, quais papéis, quais responsabilidades — pode ajudar a comunidade a se reconhecer e a avançar intencionalmente.
+**4. Tornar a Prática acessível e visível**
+A maioria ainda não ocupa papéis formais na escola. **Diversificar as formas de participação** — além dos papéis formais tradicionais (APG, grupos de trabalho) — pode incluir micromutirões, contribuições pontuais, grupos temáticos por interesse. Cada passo de participação deve ser reconhecido e valorizado.
 
-**5. Programa de integração para ingressantes**
-27% da comunidade entrou em 2025 e tem o menor score (9,52). **Onboarding estruturado** que conecte os novos membros ao propósito e às práticas desde o início é estratégico para acelerar a curva de maturidade.
+**5. Usar o gap Atitude-Prática como comunicação**
+Mostrar para a comunidade que o comprometimento interno dela já está em Comprometido (Atitude 4,23) pode ser um desbloqueio: "você já está pronto para o próximo passo". Isso convida à ação sem criar culpa.
 
 ---
 
 ## 8. Próximos Passos Sugeridos
 
-- [ ] Compartilhar os resultados com a comunidade de forma transparente e celebrativa — mostrar que a comunidade é mais madura do que pode perceber
-- [ ] Usar a curva dos 7 Processos Sociais como linguagem comum nos processos de integração e desenvolvimento
-- [ ] Criar caminhos concretos de participação estruturada (grupos de trabalho, comissões, mutirões) com convites ativos
-- [ ] Iniciar ciclo de formação em Economia Fraterna para toda a comunidade
+- [ ] Compartilhar os resultados com a comunidade de forma transparente e celebrativa
+- [ ] Usar o gap Atitude-Prática como ponto de reflexão coletiva: "nosso coração está aqui — como dar o próximo passo?"
+- [ ] Criar caminhos concretos de participação estruturada com múltiplos níveis de engajamento
+- [ ] Lançar ciclo de formação para aprofundar o Conhecimento (propósito, missão, economia fraterna)
+- [ ] Estruturar onboarding para ingressantes com foco em integração rápida ao propósito e às práticas
 - [ ] Repetir a pesquisa em 12–18 meses para medir a evolução
 
 ---
 
-*Análise gerada com base nos dados de 143 respondentes. Metodologia: pontuação exponencial base 2 ancorada nos estágios da curva dos 7 Processos Sociais, com cortes baseados no range teórico real da pesquisa [1,0 – 15,0].*
+*Análise gerada com base nos dados de 143 respondentes. Metodologia: escala linear 1-7 ancorada nos estágios da curva dos 7 Processos Sociais; Score Final ponderado por dimensão (Conhecimento 20%, Atitude 35%, Prática 45%); cortes fixos por estágio (Novo 1,00–1,49, ..., Cocriador 6,50–7,00).*
