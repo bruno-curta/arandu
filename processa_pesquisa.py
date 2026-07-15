@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
 Processa pesquisa de maturidade Arandu.
-Especificação: dimensões Conhecimento/Atitude/Prática com pesos 0.20/0.35/0.45.
-Escala linear 1-7.
+Dimensões: Conhecimento (20%), Atitude (35%), Prática (45%).
+Normalização por pergunta: cada stage é reescalado para [1,7] com base no
+min/max possível daquela pergunta na Lógica, tornando as escalas comparáveis
+antes da ponderação.
 """
 
-import sys
 import re
 import unicodedata
 import argparse
@@ -39,7 +40,6 @@ def extrai_colchetes(s):
     return m.group(1).strip() if m else None
 
 def normaliza_estagio(s):
-    """Converte string de estágio para número 1-7."""
     if s is None:
         return None
     n = normaliza(str(s))
@@ -62,25 +62,17 @@ def normaliza_estagio(s):
     return None
 
 def estagio_do_score(score):
-    """Determina estágio a partir do Score Final (1.00-7.00)."""
     if score is None or (isinstance(score, float) and pd.isna(score)):
         return None
-    if score >= 6.50:
-        return "Cocriador"
-    if score >= 5.50:
-        return "Embaixador"
-    if score >= 4.50:
-        return "Ativo no Motivo"
-    if score >= 3.50:
-        return "Comprometido"
-    if score >= 2.50:
-        return "Inserindo"
-    if score >= 1.50:
-        return "Adaptando"
+    if score >= 6.50: return "Cocriador"
+    if score >= 5.50: return "Embaixador"
+    if score >= 4.50: return "Ativo no Motivo"
+    if score >= 3.50: return "Comprometido"
+    if score >= 2.50: return "Inserindo"
+    if score >= 1.50: return "Adaptando"
     return "Novo"
 
 def casa_textos(a, b):
-    """True se os textos normalizados de a e b batem."""
     na, nb = normaliza(a), normaliza(b)
     if na == nb:
         return True
@@ -90,6 +82,12 @@ def casa_textos(a, b):
     if len(na) >= 40 and len(nb) >= 40 and na[:40] == nb[:40]:
         return True
     return False
+
+def normaliza_score(stage, q_min, q_max):
+    """Reescala stage bruto para [1,7] com base no range da pergunta."""
+    if q_max == q_min:
+        return float(stage)
+    return 1.0 + 6.0 * (stage - q_min) / (q_max - q_min)
 
 # ─── Carregamento ─────────────────────────────────────────────────────────────
 
@@ -111,16 +109,20 @@ def carrega_planilha(caminho):
         aba_df("Perguntas_Dimensoes"),
     )
 
-# ─── Mapa de lógica ──────────────────────────────────────────────────────────
+# ─── Mapa de lógica + ranges por pergunta ────────────────────────────────────
 
 def constroi_logica(df_logica):
     """
-    Retorna dois lookups:
-      mapa: {(norm_perg, norm_resp) → stage_num}
-      mapa_chave: {norm_bracket_key → {norm_resp → stage_num}}
+    Retorna:
+      mapa:      {(norm_perg, norm_resp) → stage_num}
+      mapa_chave:{norm_bracket_key → {norm_resp → stage_num}}
+      q_ranges:  {norm_perg → (min_stage, max_stage)}
+                 também indexado por norm_bracket_key para lookup rápido
     """
     mapa = {}
     mapa_chave = {}
+    q_stages_raw = defaultdict(list)   # norm_perg → [stages]
+    q_stages_ck  = defaultdict(list)   # norm_bracket_key → [stages]
 
     col_perg  = df_logica.columns[0]
     col_resp  = df_logica.columns[1]
@@ -138,62 +140,82 @@ def constroi_logica(df_logica):
         np_ = normaliza(str(perg))
         nr_ = normaliza(str(resp)) if resp is not None else ""
         mapa[(np_, nr_)] = num
+        q_stages_raw[np_].append(num)
 
         chave = extrai_colchetes(str(perg))
         if chave:
             ck = normaliza(chave)
             mapa_chave.setdefault(ck, {})[nr_] = num
+            q_stages_ck[ck].append(num)
 
-    return mapa, mapa_chave
+    # Ranges: por norm_perg e por bracket key
+    q_ranges_np = {np_: (min(v), max(v)) for np_, v in q_stages_raw.items()}
+    q_ranges_ck = {ck: (min(v), max(v)) for ck, v in q_stages_ck.items()}
 
-# ─── Busca stage ─────────────────────────────────────────────────────────────
+    return mapa, mapa_chave, q_ranges_np, q_ranges_ck
 
-def busca_stage(col_name, resp_value, mapa_logica, mapa_chave):
+# ─── Busca stage + range ─────────────────────────────────────────────────────
+
+def busca_stage_e_range(col_name, resp_value, mapa, mapa_chave, q_ranges_np, q_ranges_ck):
+    """
+    Retorna (stage_num, q_min, q_max) ou (None, None, None).
+    q_min/q_max definem o range teórico da pergunta para normalização.
+    """
     if resp_value is None or (isinstance(resp_value, float) and pd.isna(resp_value)):
-        return None
+        return None, None, None
     s = str(resp_value).strip()
     if not s:
-        return None
+        return None, None, None
 
     nr = normaliza(s)
     nc = normaliza(col_name)
-
-    # 1. Exato
-    if (nc, nr) in mapa_logica:
-        return mapa_logica[(nc, nr)]
-
-    # 2. Por bracket key da coluna
     chave_col = extrai_colchetes(col_name)
-    if chave_col:
-        ck = normaliza(chave_col)
-        if ck in mapa_chave and nr in mapa_chave[ck]:
-            return mapa_chave[ck][nr]
+    ck = normaliza(chave_col) if chave_col else None
 
-    # 3. Busca parcial com prefix match de 40 chars
-    for (np_, nr_), num in mapa_logica.items():
-        if nr_ == nr:
-            if np_ == nc:
-                return num
+    stage = None
+
+    # 1. Exato por (norm_perg, norm_resp)
+    if (nc, nr) in mapa:
+        stage = mapa[(nc, nr)]
+
+    # 2. Por bracket key
+    if stage is None and ck and ck in mapa_chave and nr in mapa_chave[ck]:
+        stage = mapa_chave[ck][nr]
+
+    # 3. Busca parcial: prefix 40 chars
+    if stage is None:
+        for (np_, nr_), num in mapa.items():
+            if nr_ == nr:
+                if np_ == nc or (len(np_) >= 40 and len(nc) >= 40 and np_[:40] == nc[:40]):
+                    stage = num
+                    break
+
+    # 4. Resposta auto-contém o estágio (ex: "10.Com base..." / autoposicionamento)
+    if stage is None:
+        parte = s.split(" - ")[0].split(":")[0].strip()
+        stage = normaliza_estagio(parte)
+
+    if stage is None:
+        return None, None, None
+
+    # Range da pergunta
+    q_min, q_max = 1, 7   # default: escala completa
+    if nc in q_ranges_np:
+        q_min, q_max = q_ranges_np[nc]
+    elif ck and ck in q_ranges_ck:
+        q_min, q_max = q_ranges_ck[ck]
+    else:
+        # Busca parcial por prefix
+        for np_, rng in q_ranges_np.items():
             if len(np_) >= 40 and len(nc) >= 40 and np_[:40] == nc[:40]:
-                return num
+                q_min, q_max = rng
+                break
 
-    # 4. Resposta contém o nome do estágio diretamente (ex: "10.Com base...")
-    parte = s.split(" - ")[0].split(":")[0].strip()
-    stage_direto = normaliza_estagio(parte)
-    if stage_direto is not None:
-        return stage_direto
-
-    return None
+    return stage, q_min, q_max
 
 # ─── Mapeamento dimensões → colunas ──────────────────────────────────────────
 
 def mapeia_dimensoes(df_pd, resp_cols):
-    """
-    Mapeia perguntas de Perguntas_Dimensoes às colunas de respostas.
-    Retorna:
-      col_para_dim: {col_name → dimensao}
-      sem_match: [(pergunta, dimensão)] sem correspondência
-    """
     col_para_dim = {}
     sem_match = []
 
@@ -223,12 +245,11 @@ def mapeia_dimensoes(df_pd, resp_cols):
 # ─── Processamento ────────────────────────────────────────────────────────────
 
 def processa(df_resp, df_logica, df_pd):
-    mapa_logica, mapa_chave = constroi_logica(df_logica)
+    mapa, mapa_chave, q_ranges_np, q_ranges_ck = constroi_logica(df_logica)
 
     resp_cols = list(df_resp.columns)
     col_para_dim, sem_match_pd = mapeia_dimensoes(df_pd, resp_cols)
 
-    # Colunas auxiliares
     col_nome = next(
         (c for c in resp_cols if normaliza(c) == normaliza("1. Nome Completo")),
         next((c for c in resp_cols if "nome completo" in normaliza(c)), None)
@@ -238,17 +259,14 @@ def processa(df_resp, df_logica, df_pd):
         next((c for c in resp_cols if "em que ano" in normaliza(c) and "arandu" in normaliza(c)), None)
     )
     col_vinculo = next(
-        (c for c in resp_cols if "vinculo" in normaliza(c) and "escola" in normaliza(c)),
-        None
+        (c for c in resp_cols if "vinculo" in normaliza(c) and "escola" in normaliza(c)), None
     )
 
-    # Agrupa colunas por dimensão
     dims_cols = defaultdict(list)
     for col, dim in col_para_dim.items():
         if dim in DIMENSOES:
             dims_cols[dim].append(col)
 
-    # Validações
     sem_logica = set()
     respondentes_sem_respostas = []
     indicadores = []
@@ -256,6 +274,7 @@ def processa(df_resp, df_logica, df_pd):
 
     for _, row in df_resp.iterrows():
         nome = str(row[col_nome]).strip() if col_nome and not pd.isna(row.get(col_nome)) else "—"
+
         ano_raw = row.get(col_ano) if col_ano else None
         if ano_raw is None or (isinstance(ano_raw, float) and pd.isna(ano_raw)):
             ano = None
@@ -266,19 +285,26 @@ def processa(df_resp, df_logica, df_pd):
                 ano = str(ano_raw)
 
         vinculo_raw = row.get(col_vinculo) if col_vinculo else None
-        vinculo = str(vinculo_raw).strip() if vinculo_raw and not (isinstance(vinculo_raw, float) and pd.isna(vinculo_raw)) else "—"
+        vinculo = (
+            str(vinculo_raw).strip()
+            if vinculo_raw and not (isinstance(vinculo_raw, float) and pd.isna(vinculo_raw))
+            else "—"
+        )
 
         scores_dim = {}
         stages_todos = []
         n_validas = 0
 
         for dim in DIMENSOES:
-            stages_dim = []
+            scores_norm = []
             for col in dims_cols[dim]:
                 val = row.get(col)
-                stage = busca_stage(col, val, mapa_logica, mapa_chave)
+                stage, q_min, q_max = busca_stage_e_range(
+                    col, val, mapa, mapa_chave, q_ranges_np, q_ranges_ck
+                )
                 if stage is not None:
-                    stages_dim.append(stage)
+                    score_norm = normaliza_score(stage, q_min, q_max)
+                    scores_norm.append(score_norm)
                     stages_todos.append(stage)
                     n_validas += 1
                     pontuacoes_detalhes.append({
@@ -286,26 +312,29 @@ def processa(df_resp, df_logica, df_pd):
                         "Dimensão": dim,
                         "Pergunta": col[:80],
                         "Resposta": str(val)[:60] if val is not None else "",
-                        "Estágio (num)": stage,
-                        "Estágio": ESTAGIO_NOME.get(stage, "?"),
+                        "Estágio bruto": stage,
+                        "Estágio bruto (nome)": ESTAGIO_NOME.get(stage, "?"),
+                        "Range pergunta (min)": q_min,
+                        "Range pergunta (max)": q_max,
+                        "Score normalizado [1-7]": round(score_norm, 2),
                     })
                 elif val is not None and not (isinstance(val, float) and pd.isna(val)) and str(val).strip():
                     sem_logica.add(f"{col[:60]} → {str(val)[:40]}")
 
-            if stages_dim:
-                scores_dim[dim] = float(sum(stages_dim)) / len(stages_dim)
+            if scores_norm:
+                scores_dim[dim] = float(sum(scores_norm)) / len(scores_norm)
 
         if not scores_dim:
             respondentes_sem_respostas.append(nome)
             continue
 
-        # Score Final ponderado (normaliza se alguma dimensão faltar)
+        # Score Final ponderado (normaliza pesos se alguma dimensão faltar)
         peso_total = sum(PESOS[d] for d in scores_dim)
         score_final = sum(scores_dim[d] * PESOS[d] for d in scores_dim) / peso_total
 
         estagio_fin = estagio_do_score(score_final)
 
-        # Estágio Predominante: mais frequente entre os estágios individuais
+        # Estágio Predominante: stage bruto mais frequente entre as respostas
         if stages_todos:
             estagio_pred_num = Counter(stages_todos).most_common(1)[0][0]
             estagio_pred = ESTAGIO_NOME.get(estagio_pred_num, "?")
@@ -341,16 +370,12 @@ def processa(df_resp, df_logica, df_pd):
 def resumo_comunidade(df_ind):
     rows = []
     rows.append({"Indicador": "Total de respondentes", "Valor": len(df_ind)})
-    rows.append({"Indicador": "Score Conhecimento médio",
-                 "Valor": round(df_ind["Score Conhecimento"].mean(), 2) if not df_ind["Score Conhecimento"].isna().all() else "—"})
-    rows.append({"Indicador": "Score Atitude médio",
-                 "Valor": round(df_ind["Score Atitude"].mean(), 2) if not df_ind["Score Atitude"].isna().all() else "—"})
-    rows.append({"Indicador": "Score Prática médio",
-                 "Valor": round(df_ind["Score Prática"].mean(), 2) if not df_ind["Score Prática"].isna().all() else "—"})
-    rows.append({"Indicador": "Score Final médio",
-                 "Valor": round(df_ind["Score Final"].mean(), 2)})
-    rows.append({"Indicador": "Estágio Final médio",
-                 "Valor": estagio_do_score(df_ind["Score Final"].mean())})
+    for dim in DIMENSOES:
+        col = f"Score {dim}"
+        val = df_ind[col].mean() if col in df_ind and not df_ind[col].isna().all() else float("nan")
+        rows.append({"Indicador": f"Score {dim} médio (normalizado)", "Valor": round(val, 2) if not pd.isna(val) else "—"})
+    rows.append({"Indicador": "Score Final médio", "Valor": round(df_ind["Score Final"].mean(), 2)})
+    rows.append({"Indicador": "Estágio Final médio", "Valor": estagio_do_score(df_ind["Score Final"].mean())})
     rows.append({"Indicador": "", "Valor": ""})
 
     rows.append({"Indicador": "--- Distribuição por Estágio Final ---", "Valor": ""})
@@ -406,7 +431,7 @@ def tempo_vinculo(df_ind):
 
 # ─── Auditoria Perguntas_Dimensoes ───────────────────────────────────────────
 
-def auditoria_pd(col_para_dim, df_pd):
+def auditoria_pd(col_para_dim, df_pd, q_ranges_np, q_ranges_ck):
     rows = []
     col_perg = df_pd.columns[0]
     col_dim  = df_pd.columns[1]
@@ -416,11 +441,25 @@ def auditoria_pd(col_para_dim, df_pd):
         dim  = row[col_dim]
         if pd.isna(perg) or perg is None:
             continue
-        matched = any(casa_textos(str(perg), col) for col in col_para_dim)
+        matched_col = next((c for c in col_para_dim if casa_textos(str(perg), c)), None)
+        matched = matched_col is not None
+
+        # Range da pergunta
+        nc = normaliza(str(perg))
+        ck = normaliza(extrai_colchetes(str(perg))) if extrai_colchetes(str(perg)) else None
+        rng = q_ranges_np.get(nc) or (q_ranges_ck.get(ck) if ck else None)
+        if rng is None:
+            for np_, r in q_ranges_np.items():
+                if len(np_) >= 40 and len(nc) >= 40 and np_[:40] == nc[:40]:
+                    rng = r
+                    break
+
         rows.append({
             "Pergunta": str(perg)[:100],
             "Dimensão": str(dim) if not (isinstance(dim, float) and pd.isna(dim)) else "",
-            "Correspondência encontrada": "Sim" if matched else "NÃO",
+            "Coluna encontrada": "Sim" if matched else "NÃO",
+            "Stage mín (Lógica)": rng[0] if rng else "—",
+            "Stage máx (Lógica)": rng[1] if rng else "—",
         })
 
     return pd.DataFrame(rows)
@@ -447,22 +486,20 @@ def df_para_aba(wb, nome_aba, df):
     if df.empty:
         ws.append(["(sem dados)"])
         return ws
-
     ws.append(list(df.columns))
     for cell in ws[1]:
         estilo_cabecalho(cell)
-
     for i, (_, row) in enumerate(df.iterrows()):
         ws.append([v if not (isinstance(v, float) and pd.isna(v)) else "" for v in row])
         if i % 2 == 1:
             for cell in ws[i + 2]:
                 cell.fill = PatternFill("solid", fgColor=COR_ALT)
-
     ws.freeze_panes = "A2"
     auto_largura(ws)
     return ws
 
-def exporta(df_ind, df_det, col_para_dim, validacoes, df_pd, caminho_saida):
+def exporta(df_ind, df_det, col_para_dim, validacoes, df_pd,
+            q_ranges_np, q_ranges_ck, caminho_saida):
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
 
@@ -474,13 +511,12 @@ def exporta(df_ind, df_det, col_para_dim, validacoes, df_pd, caminho_saida):
     df_tv = tempo_vinculo(df_ind)
     df_para_aba(wb, "Tempo_Vinculo", df_tv)
 
-    df_audit = auditoria_pd(col_para_dim, df_pd)
+    df_audit = auditoria_pd(col_para_dim, df_pd, q_ranges_np, q_ranges_ck)
     df_para_aba(wb, "Perguntas_Dimensoes_Auditoria", df_audit)
 
     if not df_det.empty:
         df_para_aba(wb, "Pontuacoes_Detalhadas", df_det)
 
-    # Validações
     val_rows = []
     val_rows.append({"Categoria": "Perguntas sem correspondência", "Detalhe": ""})
     for perg, dim in validacoes["sem_match_pd"]:
@@ -530,11 +566,11 @@ def main():
     print(f"  Sem respostas válidas: {len(validacoes['respondentes_sem_respostas'])}")
 
     if not df_ind.empty:
-        print(f"\n  Score Conhecimento médio: {df_ind['Score Conhecimento'].mean():.2f}")
-        print(f"  Score Atitude médio:      {df_ind['Score Atitude'].mean():.2f}")
-        print(f"  Score Prática médio:      {df_ind['Score Prática'].mean():.2f}")
-        print(f"  Score Final médio:        {df_ind['Score Final'].mean():.2f}")
-        print(f"  Estágio Final médio:      {estagio_do_score(df_ind['Score Final'].mean())}")
+        print(f"\n  Score Conhecimento médio (normalizado): {df_ind['Score Conhecimento'].mean():.2f}")
+        print(f"  Score Atitude médio (normalizado):      {df_ind['Score Atitude'].mean():.2f}")
+        print(f"  Score Prática médio (normalizado):      {df_ind['Score Prática'].mean():.2f}")
+        print(f"  Score Final médio:                      {df_ind['Score Final'].mean():.2f}")
+        print(f"  Estágio Final médio:                    {estagio_do_score(df_ind['Score Final'].mean())}")
         print(f"\n  Distribuição por Estágio Final:")
         dist = df_ind["Estágio Final"].value_counts()
         for est in ESTAGIOS:
@@ -544,15 +580,16 @@ def main():
 
     print(f"\n=== Validações ===")
     print(f"  Perguntas sem correspondência: {len(validacoes['sem_match_pd'])}")
-    if validacoes["sem_match_pd"]:
-        for perg, dim in validacoes["sem_match_pd"]:
-            print(f"    [{dim}] {perg[:90]}")
+    for perg, dim in validacoes["sem_match_pd"]:
+        print(f"    [{dim}] {perg[:90]}")
     print(f"  Respostas sem lógica: {len(validacoes['sem_logica'])}")
-    if validacoes["sem_logica"]:
-        for item in list(validacoes["sem_logica"])[:10]:
-            print(f"    {item}")
+    for item in list(validacoes["sem_logica"])[:10]:
+        print(f"    {item}")
 
-    exporta(df_ind, df_det, col_para_dim, validacoes, df_pd, args.saida)
+    # Para exportar precisamos dos ranges — recomputar do df_logica
+    _, _, q_ranges_np2, q_ranges_ck2 = constroi_logica(df_logica)
+    exporta(df_ind, df_det, col_para_dim, validacoes, df_pd,
+            q_ranges_np2, q_ranges_ck2, args.saida)
 
 if __name__ == "__main__":
     main()
