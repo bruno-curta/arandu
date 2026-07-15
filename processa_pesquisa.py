@@ -27,6 +27,11 @@ DIMENSOES = list(PESOS.keys())
 
 PERGUNTA_ANO = "1. Em que ano você entrou na Arandu?"
 
+# Perguntas excluídas do cálculo de score (autoposicionamento subjetivo)
+PERGUNTAS_EXCLUIR = [
+    "com base na imagem anterior, marque a posicao que mais reflete",
+]
+
 # ─── Utilidades ───────────────────────────────────────────────────────────────
 
 def normaliza(s):
@@ -221,6 +226,10 @@ def mapeia_dimensoes(df_pd, resp_cols):
         if pd.isna(perg) or perg is None:
             continue
         if pd.isna(dim) or dim is None:
+            continue
+
+        np_ = normaliza(str(perg))
+        if any(excl in np_ for excl in PERGUNTAS_EXCLUIR):
             continue
 
         encontrado = False
