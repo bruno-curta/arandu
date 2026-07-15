@@ -79,8 +79,6 @@ def casa_textos(a, b):
     ca, cb = extrai_colchetes(a), extrai_colchetes(b)
     if ca and cb and normaliza(ca) == normaliza(cb):
         return True
-    if len(na) >= 40 and len(nb) >= 40 and na[:40] == nb[:40]:
-        return True
     return False
 
 def normaliza_score(stage, q_min, q_max):
@@ -182,13 +180,12 @@ def busca_stage_e_range(col_name, resp_value, mapa, mapa_chave, q_ranges_np, q_r
     if stage is None and ck and ck in mapa_chave and nr in mapa_chave[ck]:
         stage = mapa_chave[ck][nr]
 
-    # 3. Busca parcial: prefix 40 chars
+    # 3. Busca parcial por prefixo do texto da pergunta (sem colchetes)
     if stage is None:
         for (np_, nr_), num in mapa.items():
-            if nr_ == nr:
-                if np_ == nc or (len(np_) >= 40 and len(nc) >= 40 and np_[:40] == nc[:40]):
-                    stage = num
-                    break
+            if nr_ == nr and np_ == nc:
+                stage = num
+                break
 
     # 4. Resposta auto-contém o estágio (ex: "10.Com base..." / autoposicionamento)
     if stage is None:
@@ -205,11 +202,7 @@ def busca_stage_e_range(col_name, resp_value, mapa, mapa_chave, q_ranges_np, q_r
     elif ck and ck in q_ranges_ck:
         q_min, q_max = q_ranges_ck[ck]
     else:
-        # Busca parcial por prefix
-        for np_, rng in q_ranges_np.items():
-            if len(np_) >= 40 and len(nc) >= 40 and np_[:40] == nc[:40]:
-                q_min, q_max = rng
-                break
+        pass  # sem match: usa default [1,7]
 
     return stage, q_min, q_max
 
@@ -448,11 +441,7 @@ def auditoria_pd(col_para_dim, df_pd, q_ranges_np, q_ranges_ck):
         nc = normaliza(str(perg))
         ck = normaliza(extrai_colchetes(str(perg))) if extrai_colchetes(str(perg)) else None
         rng = q_ranges_np.get(nc) or (q_ranges_ck.get(ck) if ck else None)
-        if rng is None:
-            for np_, r in q_ranges_np.items():
-                if len(np_) >= 40 and len(nc) >= 40 and np_[:40] == nc[:40]:
-                    rng = r
-                    break
+        # sem fallback de prefixo: bracket key já cobre os casos necessários
 
         rows.append({
             "Pergunta": str(perg)[:100],
