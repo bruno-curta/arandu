@@ -160,6 +160,13 @@ def inferred_stage(c_sim, p, a, ef, eng, entry_year):
     # "Disse SIM": Pertencimento net ≥ threshold E discordância < threshold
     said_yes = (p_net >= THRESH_YES) and (p_disc < THRESH_DISC)
 
+    # ── Teto superior: novatos (≤1 ano) não tiveram tempo de vivenciar a virada ─
+    # Alta concordância pode indicar potencial, mas não substitui o tempo
+    # necessário para absorver propósito, processos e decidir de fato.
+    # Cap = Inserindo; próximo nível será Comprometido se concordância for alta.
+    CAP_NOVATO = 3  # Inserindo
+    novato = years <= 1
+
     # ── Modificador de tempo ──────────────────────────────────────────────────
     if years >= 5 and not said_yes:
         if p_disc >= 0.25 or a_disc >= 0.30:
@@ -200,17 +207,31 @@ def inferred_stage(c_sim, p, a, ef, eng, entry_year):
             f"e Ec. Fraterna ({ef_nao:.0%}) → ainda aprendendo as práticas"
         )
     if not active:
+        if novato:
+            return CAP_NOVATO, (
+                f"Alta concordância (Pertencimento net={p_net:.0%}), "
+                f"mas tempo na escola: {years} ano(s) → Inserindo "
+                f"(potencial rápido para Comprometido)"
+            )
         return 4, "Diz SIM para a escola, mas sem papel ativo no momento"
     if many and overall >= 0.75 and ef_net >= 0.60:
-        return 7, (
+        stage, just = 7, (
             f"{e_ativo} papéis ativos + concordância global ({overall:.0%}) "
             f"+ Ec. Fraterna forte ({ef_net:.0%})"
         )
-    if multi and overall >= 0.70:
-        return 6, f"{e_ativo} papéis ativos + concordância global ({overall:.0%})"
-    if active and overall >= 0.60:
-        return 5, f"{e_ativo} papel(éis) ativo(s) + concordância ({overall:.0%})"
-    return 4, f"Papel ativo, mas concordância global ainda moderada ({overall:.0%})"
+    elif multi and overall >= 0.70:
+        stage, just = 6, f"{e_ativo} papéis ativos + concordância global ({overall:.0%})"
+    elif active and overall >= 0.60:
+        stage, just = 5, f"{e_ativo} papel(éis) ativo(s) + concordância ({overall:.0%})"
+    else:
+        stage, just = 4, f"Papel ativo, mas concordância global ainda moderada ({overall:.0%})"
+
+    if novato and stage > CAP_NOVATO:
+        return CAP_NOVATO, (
+            f"Alta concordância / engajamento (potencial {ESTAGIO_NOME[stage]}), "
+            f"mas tempo na escola: {years} ano(s) → cap em Inserindo"
+        )
+    return stage, just
 
 # ─── Alinhamento ──────────────────────────────────────────────────────────────
 
@@ -471,6 +492,7 @@ def main():
         ("Discordância relevante", f"≥ {THRESH_DISC:.0%} em qualquer esfera"),
         ("", ""),
         ("MODIFICADOR DE TEMPO", ""),
+        ("≤ 1 ano na escola (2024–2025)", "→ Cap máximo = Inserindo, mesmo com alta concordância (potencial indica próximo passo)"),
         ("≥ 5 anos + não disse SIM + disc. ≥ 25%", "→ Adaptando (tensão/sinal de possível saída)"),
         ("≥ 5 anos + não disse SIM", "→ Inserindo (no ponto de virada há muito tempo)"),
         ("", ""),
