@@ -233,8 +233,12 @@ def parse_ano(v):
 def parse_q10(v):
     if v is None or (isinstance(v, float) and pd.isna(v)): return None, "—"
     s = str(v).strip()
+    ns = norm(s)
+    # Q10 format: "ESTÁGIO - descrição" — verificar pelo início evita falsos
+    # positivos (ex: "novo" aparece no meio da descrição do Cocriador)
     for num, nome in ESTAGIO_NOME.items():
-        if norm(nome) in norm(s): return num, nome
+        if ns.startswith(norm(nome)):
+            return num, nome
     return None, "—"
 
 # ─── Estilos ──────────────────────────────────────────────────────────────────
